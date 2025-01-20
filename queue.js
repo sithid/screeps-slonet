@@ -14,7 +14,7 @@ class Queue {
     push(data) {
         let newNode = new Node(data);
 
-        if (this.head === null) {
+        if (this.head == null) {
           this.head = newNode;
           this.tail = newNode;
           return;
@@ -25,14 +25,14 @@ class Queue {
     }
 
     pop() {
-        if (this.head === null) {
+        if (this.head == null) {
             return -1;
           }
         
           let oldHead = this.head;
           this.head = oldHead.next;
         
-          if (this.head === null) {
+          if (this.head == null) {
             this.tail = null;
           }
         
