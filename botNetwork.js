@@ -22,7 +22,7 @@ class BotNetwork {
     }
 
     updateBotNet() {
-        this.spawnManager.updateSpawns();
+        this.spawnManager.updateSpawners();
         this.creepManager.updateCreeps();
     }
 }

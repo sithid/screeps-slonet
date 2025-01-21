@@ -1,22 +1,21 @@
 const MinionController = require('./minionController');
-var config = require('config');
+const { Task, TaskManager } = require('./taskManager');
 
-const IGNORE_CON_REQ = true;
+var config = require('config');
 
 class CreepManager {
     constructor() {
-        this.updateBotData();
+        this.TaskManager = new TaskManager()
+        this.updateCreeps();
     }
     
     updateCreeps() {
-        this.updateBotData();
-        this.printBotData();
-        this.spawnCreeps();
-        this.handleRoles();
-        this.memoryCleanup();
+        this.updateLocalData();
+        this.printBotNetData();
+        this.manageRoles();
     }
 
-    updateBotData() {
+    updateLocalData() {
         this.allCreeps = _.filter(Game.creeps);
         this.harvesters = _.filter(Game.creeps, (creep) => creep.memory.role === 'harvester');
         this.haulers = _.filter(Game.creeps, (creep) => creep.memory.role === 'hauler');
@@ -28,7 +27,7 @@ class CreepManager {
         this.roomEnergy = Game.spawns['Spawn1'].room.energyAvailable;
     }
 
-    printBotData() {
+    printBotNetData() {
         var log = '';
         log += '\n        SloNet BotNet Information';
         log += '\n             -=Screep Data=-';
@@ -56,108 +55,13 @@ class CreepManager {
         console.log( log );
     }
 
-    spawnCreeps() {
-        if(!Game.spawns['Spawn1'].spawning)
-        {        
-            if(this.harvesters.length < config.MAX_HARVESTERS)
-            {
-                if( Game.spawns['Spawn1'].room.energyAvailable >= config.getBuildCost(config.HARVESTER_BUILD) )
-                {
-                    var newName = 'Harvester' + Game.time;
-                    console.log('Spawning new harvester: ' + newName);
-                    Game.spawns['Spawn1'].spawnCreep(config.getBuild(config.HARVESTER_BUILD), newName, {memory: {role: 'harvester'}});
-                }
-                else
-                {
-                    console.log('Harvesters below maximum [' + this.harvesters.length + '/' + config.MAX_HARVESTERS + '] but there is not enough energy availible. [' + Game.spawns['Spawn1'].room.energyAvailable + ']');
-                }
-            }
-            if(this.haulers.length < config.MAX_HAULERS)
-            {
-                if( Game.spawns['Spawn1'].room.energyAvailable >= config.getBuildCost(config.HAULER_BUILD) )
-                {
-                    var newName = 'Hauler' + Game.time;
-                    console.log('Spawning new haulers: ' + newName);
-                    Game.spawns['Spawn1'].spawnCreep(config.getBuild(config.HAULER_BUILD), newName, {memory: {role: 'hauler'}});
-                }
-                else
-                {
-                    console.log('Haulers below maximum [' + this.haulers.length + '/' + config.MAX_HAULERS + '] but there is not enough energy availible. [' + Game.spawns['Spawn1'].room.energyAvailable + ']');
-                }
-            }
-            else if(this.upgraders.length < config.MAX_UPGRADERS )
-            {
-                if( Game.spawns['Spawn1'].room.energyAvailable >= config.getBuildCost(config.UPGRADE) )
-                {
-                    var newName = 'Upgrader' + Game.time;
-                    console.log('Spawning new upgrader: ' + newName);
-                    Game.spawns['Spawn1'].spawnCreep(config.getBuild(config.UPGRADER_BUILD), newName, {memory: {role: 'upgrader'}});
-                }
-                else
-                {
-                    console.log('Upgraders below maximum [' + this.upgraders.length + '/' +config.MAX_UPGRADERS + '] but there is not enough energy availible. [' + Game.spawns['Spawn1'].room.energyAvailable + ']');
-                }
-            }
-            else if(this.claimers.length < config.MAX_CLAIMERS )
-            {
-                if( Game.spawns['Spawn1'].room.energyAvailable >= config.getBuildCost(config.CLAIMER_BUILD) )
-                {
-                    var newName = 'Claimer' + Game.time;
-                    console.log('Spawning new claimer: ' + newName);
-                    Game.spawns['Spawn1'].spawnCreep(config.getBuild(config.CLAIMER_BUILD), newName, {memory: {role: 'claimer', targetFlag: 'Capture'}});
-                }
-                else
-                {
-                    console.log('Claimers below maximum [' + this.claimers.length + '/' +config.MAX_CLAIMERS + '] but there is not enough energy availible. [' + Game.spawns['Spawn1'].room.energyAvailable + ']');
-                }
-            }
-            else if(this.builders.length < config.MAX_BUILDERS )
-            {
-                // Only build new builders if we can find construction sites.
-                var targets = Game.spawns['Spawn1'].room.find(FIND_CONSTRUCTION_SITES)
-                
-                
-                if( targets.length  || IGNORE_CON_REQ == true )
-                {
-                    if( Game.spawns['Spawn1'].room.energyAvailable >= config.getBuildCost(config.BUILDER_BUILD) )
-                    {
-                        var newName = 'Builder' + Game.time;
-                        console.log('Construction sites availible, spawning new builders: ' + newName);
-                        Game.spawns['Spawn1'].spawnCreep(config.getBuild(config.BUILDER_BUILD), newName, {memory: {role: 'builder'}});
-                    }
-                    else
-                    {
-                        console.log('Builders below maximum [' + this.builders.length + '/' + config.MAX_BUILDERS + '] but there is not enough energy availible. [' + Game.spawns['Spawn1'].room.energyAvailable + ']');
-                    }
-                }
-                else
-                {
-                    console.log('Builders below maximum [' + this.builders.length + '/' + config.MAX_BUILDERS + '] but there are no construction sites around to make it worth it.');
-                }
-            }
-        }
-    }
-
-    handleRoles() {
+    manageRoles() {
         for(var name in this.allCreeps)
         {
-            var creep = this.allCreeps[name];
-            var ctrl = new MinionController(creep);
-
+            var ctrl = new MinionController(this.allCreeps[name]);
             ctrl.update();            
         }
     }
-    
-    memoryCleanup() {
-        for(var name in Memory.creeps)
-        {
-            if(!Game.creeps[name])
-            {
-                delete Memory.creeps[name];
-                console.log('Clearing non-existing creep memory:', name);
-            }
-        }
-    }
-};
+}
 
 module.exports = CreepManager;

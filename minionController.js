@@ -1,5 +1,6 @@
 var config = require('config');
 
+// Desparately in need of refectorying.  Will revisit a cleaner implementation of role handling at a later time.
 class MinionController {
     constructor(creep) {
         this.creep = creep;
@@ -53,9 +54,11 @@ class MinionController {
         else {
             var targets = creep.room.find(FIND_STRUCTURES, { 
                 filter: (structure) => {
-                    return (( structure.structureType == STRUCTURE_SPAWN) &&
+                    return (( structure.structureType == STRUCTURE_SPAWN) &&            // Check if spawner needs energy.
                               structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0) || 
-                           (( structure.structureType == STRUCTURE_EXTENSION  ) && 
+                           (( structure.structureType == STRUCTURE_EXTENSION  ) &&      // Check if extensions need energy. 
+                              structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0) ||  
+                           (( structure.structureType == STRUCTURE_CONTAINER  ) &&      // Check if containers need energy.
                               structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0); 
                 }   
             });
@@ -73,78 +76,40 @@ class MinionController {
         }
     }
 
-    // Desparately in need of refectorying.  Will revisit a cleaner implementation of role handling at a later time.
     runHauler() {
         var creep = this.creep;
 
-        if( creep.memory.harvesting && creep.store.getFreeCapacity() == 0 )
-            creep.memory.harvesting = false;
-
-        if( !creep.memory.harvesting && creep.store[RESOURCE_ENERGY] == 0 )
-            creep.memory.harvesting = true;
-        
-        if( creep.memory.harvesting ) {
-            var sources = creep.room.find(FIND_SOURCES);
+        var containers = creep.room.find(FIND_STRUCTURES, {
+            filter: (structure) => {
+                return structure.structureType == STRUCTURE_CONTAINER && structure.store[RESOURCE_ENERGY] > 0;
+            }            
+        });
             
-            if(creep.harvest(sources[config.HAULER_SOURCE]) == ERR_NOT_IN_RANGE)
-                creep.moveTo(sources[config.HAULER_SOURCE], {visualizePathStyle: {stroke: '#0000FF'}});
-        }
-        else {
-            var containers = creep.room.find(FIND_STRUCTURES, {
-                filter: (structure) => {
-                    return structure.structureType == STRUCTURE_CONTAINER &&
-                        structure.store.getFreeCapacity > 0;
-                }
-            });
-            
-            var targets = creep.room.find(FIND_STRUCTURES, {
-                filter: (structure) => {
-                    return (structure.structureType == STRUCTURE_SPAWN ||
-                        structure.structureType == STRUCTURE_EXTENSION) &&
-                        structure.store.getFreeCapacity > 0;
-                }
-            });
+        var targets = creep.room.find(FIND_STRUCTURES, {
+            filter: (structure) => {
+                return (structure.structureType == STRUCTURE_SPAWN ||
+                    structure.structureType == STRUCTURE_EXTENSION) &&
+                    structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0;
+            }
+        });
 
-            if (containers.length > 0 && targets.length > 0) {
-                let container = containers[0];
-                let target = targets[0];
+        if (containers.length > 0 && targets.length > 0) {
+            let container = containers[0];
+            let target = targets[0];
 
-                if( creep.store.getFreeCapacity > 0 ) {
-                    if (creep.withdraw(container, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                        creep.moveTo(container, {visualizePathStyle: {stroke: '#00FF00'}});
-                    }
-                }
-                else {
-                    if (creep.transfer(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
-                        creep.moveTo(target, {visualizePathStyle: {stroke: '#00FF00'}});
-                    }
+            if( creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0 ) {
+                if (creep.withdraw(container, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(container, {visualizePathStyle: {stroke: '#00FF00'}});
                 }
             }
             else {
-                var targets = creep.room.find(FIND_STRUCTURES, { 
-                    filter: (structure) => {
-                        return  (( structure.structureType == STRUCTURE_SPAWN) &&
-                                    structure.store.getFreeCapacity(RESOURCE_ENERGY ) > 0 ) || 
-                                (( structure.structureType == STRUCTURE_EXTENSION  ) && 
-                                    structure.store.getFreeCapacity(RESOURCE_ENERGY ) > 0 ) ||
-                                (( structure.structureType == STRUCTURE_CONTAINER  ) && 
-                                    structure.store.getFreeCapacity(STRUCTURE_CONTAINER ) > 0 ) ||
-                                (( structure.structureType == STRUCTURE_STORAGE  ) && 
-                                    structure.store.getFreeCapacity(STRUCTURE_STORAGE ) > 0 );            
-                    }   
-                });
-            
-                if(targets.length > 0) {
-                    if(creep.transfer(targets[0], RESOURCE_ENERGY) == ERR_NOT_IN_RANGE)
-                        creep.moveTo(targets[0], {visualizePathStyle: {stroke: '#00FF00'}});
+                if (creep.transfer(target, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(target, {visualizePathStyle: {stroke: '#00FF00'}});
                 }
-                else {
-                    if(creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE)
-                        creep.moveTo(creep.room.controller, {visualizePathStyle: {stroke: '#00FF00'}});
-                }
-
-                return;
             }
+        }
+        else {
+            creep.moveTo( 15, 30 );
         }
     }
 
@@ -158,16 +123,38 @@ class MinionController {
             creep.memory.building = true;
             
         if(creep.memory.building) {
-            var thisRoom = Game.spawns["Spawn1"].room;
-            var sites = thisRoom.find(FIND_CONSTRUCTION_SITES);
+                let structuresToRepair = creep.room.find(FIND_STRUCTURES, {
+                filter: (structure) => {
+                    return (structure.structureType == STRUCTURE_ROAD || 
+                            structure.structureType == STRUCTURE_CONTAINER ||
+                            structure.structureType == STRUCTURE_WALL ||
+                            structure.structureType == STRUCTURE_RAMPART) && 
+                            structure.hits < structure.hitsMax;
+                }
+            });
             
-            if(sites.length > 0 ) {
-                if(creep.build(sites[0]) == ERR_NOT_IN_RANGE)
-                    creep.moveTo(sites[0], {visualizePathStyle: {stroke: '#00FF00'}});
+            // Repair structures
+            if (structuresToRepair.length > 0) {
+                creep.memory.repairing = true;
+                let closestStructure = creep.pos.findClosestByPath(structuresToRepair);
+                if (creep.repair(closestStructure) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(closestStructure);
+                }
             }
             else {
-                if(creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE)
-                    creep.moveTo(creep.room.controller, {visualizePathStyle: {stroke: '#00FF00'}});
+                creep.memory.repairing = false;
+                
+                var thisRoom = Game.spawns["Spawn1"].room;
+                var sites = thisRoom.find(FIND_CONSTRUCTION_SITES);
+            
+                if(sites.length > 0 ) {
+                    if(creep.build(sites[0]) == ERR_NOT_IN_RANGE)
+                        creep.moveTo(sites[0], {visualizePathStyle: {stroke: '#00FF00'}});
+                }
+                else {
+                    if(creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE)
+                        creep.moveTo(creep.room.controller, {visualizePathStyle: {stroke: '#00FF00'}});
+                }
             }
         }
         else {

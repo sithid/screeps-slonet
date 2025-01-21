@@ -7,7 +7,7 @@ module.exports.CLAIMER_BUILD        = 5;
 module.exports.ATTACKER_BUILD       = 6;
 
 module.exports.MAX_HARVESTERS       = 5;
-module.exports.MAX_HAULERS          = 5;
+module.exports.MAX_HAULERS          = 2;
 module.exports.MAX_BUILDERS         = 5;
 module.exports.MAX_UPGRADERS        = 0;
 module.exports.MAX_ATTACKERS        = 0;
@@ -19,6 +19,7 @@ module.exports.BUILDER_SOURCE       = 1;
 module.exports.UPGRADER_SOURCE      = 0;
 
 module.exports.MOVE_FROM_CONTAINERS = true;
+module.exports.IGNORE_CON_REQ = true;
 
 module.exports.getBuild = function(level)
 {
